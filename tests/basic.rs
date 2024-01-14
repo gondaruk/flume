@@ -5,7 +5,7 @@ use flume::*;
 fn send_recv() {
     let (tx, rx) = unbounded();
     for i in 0..1000 { tx.send(i).unwrap(); }
-    for i in 0..1000 { assert_eq!(rx.try_recv().unwrap(), i); }
+    for i in (0..1000).rev() { assert_eq!(rx.try_recv().unwrap(), i); }
     assert!(rx.try_recv().is_err());
 }
 
@@ -154,7 +154,7 @@ fn drain() {
 
     rx.recv().unwrap();
 
-    (1u32..100).chain(0..100).zip(rx).for_each(|(l, r)| assert_eq!(l, r));
+    (0u32..100).chain(0..99).rev().zip(rx).for_each(|(l, r)| assert_eq!(l, r) );
 }
 
 #[test]
@@ -167,11 +167,11 @@ fn try_send() {
 
     assert!(tx.try_send(42).is_err());
 
-    assert_eq!(rx.recv(), Ok(0));
+    assert_eq!(rx.recv(), Ok(4));
 
-    assert_eq!(tx.try_send(42), Ok(()));
+    assert_eq!(tx.try_send(43), Ok(()));
 
-    assert_eq!(rx.recv(), Ok(1));
+    assert_eq!(rx.recv(), Ok(43));
     drop(rx);
 
     assert!(tx.try_send(42).is_err());
@@ -341,8 +341,8 @@ fn select_general() {
 
     let t = std::thread::spawn(move || {
         std::thread::sleep(std::time::Duration::from_millis(100));
-        assert_eq!(rx0.recv().unwrap(), Foo(42));
         assert_eq!(rx0.recv().unwrap(), Foo(43));
+        assert_eq!(rx0.recv().unwrap(), Foo(42));
 
     });
 

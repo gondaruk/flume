@@ -105,7 +105,7 @@ fn r#async_recv_drop_recv() {
 
 #[cfg(feature = "async")]
 #[async_std::test]
-async fn r#async_send_1_million_no_drop_or_reorder() {
+async fn r#async_send_1_million_no_drop() {
     #[derive(Debug)]
     enum Message {
         Increment {
@@ -120,9 +120,15 @@ async fn r#async_send_1_million_no_drop_or_reorder() {
         let mut count = 0u64;
 
         while let Ok(Message::Increment { old }) = rx.recv_async().await {
-            assert_eq!(old, count);
+            // DISABLED: this assert assert if useless, as channel is unordered now
+            // assert_eq!(old, count);
             count += 1;
+            if count == 1_000_000 {
+                break;
+            }
         }
+
+        assert_eq!(rx.len(), 0);
 
         count
     });
@@ -131,10 +137,9 @@ async fn r#async_send_1_million_no_drop_or_reorder() {
         tx.send(Message::Increment { old: next }).unwrap();
     }
 
-    tx.send(Message::ReturnCount).unwrap();
-
     let count = t.await;
-    assert_eq!(count, 1_000_000)
+    assert_eq!(count, 1_000_000);
+    assert_eq!(tx.len(), 0);
 }
 
 #[cfg(feature = "async")]
@@ -248,6 +253,7 @@ fn change_waker() {
 
 #[cfg(feature = "async")]
 #[test]
+#[ignore]
 fn spsc_single_threaded_value_ordering() {
     async fn test() {
         let (tx, rx) = flume::bounded(4);

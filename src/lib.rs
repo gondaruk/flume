@@ -440,7 +440,7 @@ impl<T> Chan<T> {
                 if let Some(s) = sending.pop_front() {
                     let (msg, signal) = s.fire_recv();
                     signal.fire();
-                    self.queue.push_back(msg);
+                    self.queue.push_front(msg);
                 } else {
                     break;
                 }
@@ -454,6 +454,7 @@ impl<T> Chan<T> {
         }
     }
 }
+
 
 struct Shared<T> {
     chan: ChanLock<Chan<T>>,
@@ -497,7 +498,7 @@ impl<T> Shared<T> {
                     None if msg.is_none() => break,
                     // No more waiting receivers, so add msg to queue and break out of the loop
                     None => {
-                        chan.queue.push_back(msg.unwrap());
+                        chan.queue.push_front(msg.unwrap());
                         break;
                     }
                     Some((Some(m), signal)) => {
@@ -509,7 +510,7 @@ impl<T> Shared<T> {
                         } else {
                             // Was async and not a stream, so it did acquire the message. Push the
                             // message to the queue for it to be received.
-                            chan.queue.push_back(m);
+                            chan.queue.push_front(m);
                             drop(chan);
                             break;
                         }
@@ -524,7 +525,7 @@ impl<T> Shared<T> {
 
             Ok(()).into()
         } else if chan.sending.as_ref().map(|(cap, _)| chan.queue.len() < *cap).unwrap_or(true) {
-            chan.queue.push_back(msg);
+            chan.queue.push_front(msg);
             Ok(()).into()
         } else if should_block { // Only bounded from here on
             let hook = make_signal(msg);
